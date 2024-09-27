@@ -8,3 +8,5 @@ actual (cm), sensor value
 52.5,230
 57.5,210
 62.5,191
+
+to transfer over to .csv

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 
 # Calibration Curve Fitting
-points = pd.read_csv("calibration_data.csv")
+points = pd.read_csv("data/calibration_data.csv")
 df = points.values
 
 x = np.array(df[:, 2])
