@@ -1,77 +1,82 @@
-#      ******************************************************************
-#      *                                                                *
-#      *                                                                *
-#      *    Example Python program that receives data from an Arduino   *
-#      *                                                                *
-#      *                                                                *
-#      ******************************************************************
-
-
 import serial
+import numpy as np
+import math
+from FitCurve import f
+import matplotlib.pyplot as plt
 
-#
-# Note 1: This python script was designed to run with Python 3.
-#
-# Note 2: The script uses "pyserial" which must be installed.  If you have
-#         previously installed the "serial" package, it must be uninstalled
-#         first.
-#
-# Note 3: While this script is running you can not re-program the Arduino.
-#         Before downloading a new Arduino sketch, you must exit this
-#         script first.
-#
-
-
-#
-# Set the name of the serial port.  Determine the name as follows:
-#	1) From Arduino's "Tools" menu, select "Port"
-#	2) It will show you which Port is used to connect to the Arduino
-#
-# For Windows computers, the name is formatted like: "COM6"
-# For Apple computers, the name is formatted like: "/dev/tty.usbmodemfa141"
-#
-arduinoComPort = "COM6"
-
-
-#
-# Set the baud rate
-# NOTE1: The baudRate for the sending and receiving programs must be the same!
-# NOTE2: For faster communication, set the baudRate to 115200 below
-#        and check that the arduino sketch you are using is updated as well.
-#
+arduinoComPort = "/dev/ttyACM1"
 baudRate = 9600
-
-
-#
-# open the serial port
-#
 serialPort = serial.Serial(arduinoComPort, baudRate, timeout=1)
+ 
+total_pan_degrees = 46
+total_tilt_degrees = 70
+counter = 0
+sensorOutputArr = np.zeros((total_pan_degrees,total_tilt_degrees))
+sensorOutputs = []
+# sensorOutputArr = np.random.randint(0, 560, (91,91))
 
-
-
-#
-# main loop to read data from the Arduino, then display it
-#
-while True:
-  #
-  # ask for a line of data from the serial port, the ".decode()" converts the
-  # data from an "array of bytes", to a string
-  #
-  lineOfData = serialPort.readline().decode()
-
-  #
-  # check if data was received
-  #
+while (counter < ((total_pan_degrees) / (1) * (total_tilt_degrees) / (2))):
+  lineOfData = serialPort.readline().decode().strip()
   if len(lineOfData) > 0:
-    #
-    # data was received, convert it into 4 integers
-    #
-    a, b, c, d = (int(x) for x in lineOfData.split(','))
+    # Serial lines are in the format: [panPos]/[tiltPos]/[sensorOutput] \n
+    print(lineOfData)
+    data = lineOfData.split("/") 
+    if len(data) == 3:
+      panPos = int(data[0])
+      tiltPos = int(data[1])
+      sensorOutput = int(data[2])
+      distance = f(sensorOutput)
 
-    #
-    # print the results
-    #
-    print("a = " + str(a), end="")
-    print(", b = " + str(b), end="")
-    print(", c = " + str(c), end="")
-    print(", d = " + str(d))
+      sensorOutputArr[panPos][tiltPos] = distance
+      sensorOutputs.append((panPos,tiltPos, distance))
+      counter += 1
+
+xs = []
+ys = []
+zs = []
+
+"""
+cartesianPointsArr = np.zeros(sensorOutputArr.shape)
+for i in range(len(cartesianPointsArr)):
+  for j in range(len(cartesianPointsArr)):
+    
+    rho = sensorOutputArr[i][j]
+    theta = math.radians(i)
+    phi = math.radians(j)
+    # Conver from Spherical Coordinates to Cartesian
+    x = rho * math.sin(phi) * math.cos(theta)
+    y = rho * math.sin(phi) * math.sin(theta)
+    z = rho * math.cos(phi)
+    # cartesianPointsArr[i][j] = (x,y,z) # Set the pan-tilt degree index to be the coordinates in x,y,z
+
+
+    if x < 20 and y < 10:
+      continue
+    else:
+      xs.append(x)
+      ys.append(y)
+      zs.append(z)
+
+"""
+
+for i in sensorOutputs:
+  rho = i[0]
+  theta = math.radians(i[1])
+  phi = math.radians(i[2])
+
+  x = rho * math.sin(phi) * math.cos(theta)
+  y = rho * math.sin(phi) * math.sin(theta)
+  z = rho * math.cos(phi)
+  xs.append(x)
+  ys.append(y)
+  zs.append(z)
+
+
+# Graph a scatterplot of the object in 3D
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+ax.scatter(xs, ys, zs)
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+plt.show()
